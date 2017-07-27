@@ -15,6 +15,7 @@ REQUIREMENTS = [
     'backport_collections==0.1',
     'django-appdata>=0.1.4',
     'django-cms>=3.2',
+    'djangocms-publisher',
     'djangocms-text-ckeditor',
     'django-filer>=0.9.9',
     'django-parler>=1.4',

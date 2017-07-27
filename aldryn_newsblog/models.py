@@ -31,6 +31,7 @@ from aldryn_newsblog.utils.utilities import get_valid_languages_from_request
 from cms.models.fields import PlaceholderField
 from cms.models.pluginmodel import CMSPlugin
 from cms.utils.i18n import get_current_language, get_redirect_on_fallback
+from djangocms_publisher.models import PublisherModelMixin
 from djangocms_text_ckeditor.fields import HTMLField
 from filer.fields.image import FilerImageField
 from parler.models import TranslatableModel, TranslatedFields
@@ -68,9 +69,12 @@ SQL_IS_TRUE = {
 
 @python_2_unicode_compatible
 @version_controlled_content(follow=['app_config'])
-class Article(TranslatedAutoSlugifyMixin,
-              TranslationHelperMixin,
-              TranslatableModel):
+class Article(
+    PublisherModelMixin,
+    TranslatedAutoSlugifyMixin,
+    TranslationHelperMixin,
+    TranslatableModel,
+):
 
     # TranslatedAutoSlugifyMixin options
     slug_source_field_name = 'title'
@@ -111,7 +115,10 @@ class Article(TranslatedAutoSlugifyMixin,
             verbose_name=_('meta description'), blank=True, default=''),
         meta_keywords=models.TextField(
             verbose_name=_('meta keywords'), blank=True, default=''),
-        meta={'unique_together': (('language_code', 'slug', ), )},
+        # FIXME: We should have this unique_together, but we need to be able
+        #        to have two identical slugs at the same time for
+        #        draft/published.
+        # meta={'unique_together': (('language_code', 'slug', ), )},
 
         search_data=models.TextField(blank=True, editable=False)
     )
@@ -156,6 +163,10 @@ class Article(TranslatedAutoSlugifyMixin,
 
     class Meta:
         ordering = ['-publishing_date']
+
+    def publisher_copy_relations(self, old_obj):
+        from djangocms_publisher.utils import copy_parler_translations
+        copy_parler_translations(new_obj=self, old_obj=old_obj)
 
     @property
     def published(self):
