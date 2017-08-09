@@ -24,17 +24,21 @@ from aldryn_categories.models import Category
 from aldryn_people.models import Person
 from aldryn_reversion.core import version_controlled_content
 from aldryn_translation_tools.models import (
-    TranslationHelperMixin, TranslatedAutoSlugifyMixin,
+    TranslationHelperMixin,
+    TranslatedAutoSlugifyMixin,
 )
 from aldryn_newsblog.utils.utilities import get_valid_languages_from_request
 
 from cms.models.fields import PlaceholderField
 from cms.models.pluginmodel import CMSPlugin
 from cms.utils.i18n import get_current_language, get_redirect_on_fallback
-from djangocms_publisher.models import PublisherModelMixin
+from djangocms_publisher.models_parler import (
+    ParlerPublisherTranslatedFields,
+    ParlerPublisherModelMixin,
+)
 from djangocms_text_ckeditor.fields import HTMLField
 from filer.fields.image import FilerImageField
-from parler.models import TranslatableModel, TranslatedFields
+from parler.models import TranslatableModel
 from sortedm2m.fields import SortedManyToManyField
 from taggit.managers import TaggableManager
 from taggit.models import Tag
@@ -70,7 +74,7 @@ SQL_IS_TRUE = {
 @python_2_unicode_compatible
 @version_controlled_content(follow=['app_config'])
 class Article(
-    PublisherModelMixin,
+    ParlerPublisherModelMixin,
     TranslatedAutoSlugifyMixin,
     TranslationHelperMixin,
     TranslatableModel,
@@ -88,16 +92,16 @@ class Article(
         False
     )
 
-    translations = TranslatedFields(
+    translations = ParlerPublisherTranslatedFields(
         # publisher_is_published_version is used to maintain slug uniqueness
         # for published versions. It is a NullBooleanField so it can be
         # null for drafts and allow non-unique slugs.
-        publisher_is_published_translation_version=models.NullBooleanField(
-            null=True,
-            blank=True,
-            default=None,
-            editable=False,
-        ),
+        # publisher_is_published_translation_version=models.NullBooleanField(
+        #     null=True,
+        #     blank=True,
+        #     default=None,
+        #     editable=False,
+        # ),
         title=models.CharField(_('title'), max_length=234),
         slug=models.SlugField(
             verbose_name=_('slug'),
@@ -124,15 +128,15 @@ class Article(
             verbose_name=_('meta description'), blank=True, default=''),
         meta_keywords=models.TextField(
             verbose_name=_('meta keywords'), blank=True, default=''),
-        meta={
-            'unique_together': (
-                (
-                    'language_code',
-                    'slug',
-                    'publisher_is_published_translation_version',
-                ),
-            )
-        },
+        # meta={
+        #     'unique_together': (
+        #         (
+        #             'language_code',
+        #             'slug',
+        #             'publisher_is_published_translation_version',
+        #         ),
+        #     )
+        # },
 
         search_data=models.TextField(blank=True, editable=False)
     )
@@ -177,17 +181,11 @@ class Article(
         ordering = ['-publishing_date']
 
     def publisher_copy_relations(self, old_obj):
-        from djangocms_publisher.utils import copy_parler_translations
-        from djangocms_publisher.utils import copy_placeholder
         new_obj = self
-        new_is_pub = True if new_obj.publisher_is_published_version else None
-        copy_parler_translations(
-            new_obj=self,
-            old_obj=old_obj,
-            extra_values={
-                'publisher_is_published_translation_version': new_is_pub,
-            }
-        )
+        # copy_parler_translations(
+        #     new_obj=self,
+        #     old_obj=old_obj,
+        # )
         # TODO: Is there a more efficient way to copy ManyToMany?
         new_obj.categories = old_obj.categories.all()
         new_obj.related = old_obj.related.all()
@@ -197,7 +195,6 @@ class Article(
             # create a new one for the new_obj.
             new_obj.content = None
             new_obj.save()
-        copy_placeholder(old_obj.content, new_obj.content)
         return new_obj
 
     def publisher_rewrite_ignore_stuff(self, old_obj):

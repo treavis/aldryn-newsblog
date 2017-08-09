@@ -14,8 +14,7 @@ from aldryn_people.models import Person
 from aldryn_reversion.admin import VersionedPlaceholderAdminMixin
 from aldryn_translation_tools.admin import AllTranslationsMixin
 
-from djangocms_publisher.admin import PublisherAdminMixin, \
-    PublisherParlerAdminMixin
+from djangocms_publisher.admin_parler import PublisherParlerAdminMixin
 from . import models
 
 
@@ -112,16 +111,25 @@ class ArticleAdmin(
     form = ArticleAdminForm
     list_display = (
         'title',
+        'is_published',
+        'all_translations',
+        'publisher_status_parler',
         'publisher_status',
         'app_config',
         'slug',
         'is_featured',
-        'is_published',
     )
     list_filter = [
         'app_config',
         'categories',
+        'is_featured',
+        'app_config',
     ]
+    search_fields = (
+        'translations__title',
+        'publisher_published_version__translations__title',
+        'publisher_draft_version__translations__title',
+    )
     actions = (
         make_featured, make_not_featured,
         # FIXME: implement with djangocms-publisher
@@ -130,6 +138,7 @@ class ArticleAdmin(
     fieldsets = (
         (None, {
             'fields': (
+                'is_published',
                 'publisher_status',
             ),
             'classes': ('filer-file-info',),  # FIXME: add styling in djangocms-publisher to hide the ":"
@@ -188,9 +197,16 @@ class ArticleAdmin(
         'default_published': 'is_published',
     }
 
+    def get_queryset(self, request):
+        qs = super(ArticleAdmin, self).get_queryset(request)
+        qs = qs.publisher_draft_or_published_only_prefer_published()
+        return qs
+
     def is_published(self, obj):
-        return obj.is_published
+        return obj.publisher_is_published_version
     is_published.admin_order_field = 'publisher_is_published_version'
+    is_published.short_description = 'pub'
+    is_published.boolean = True
 
     def add_view(self, request, *args, **kwargs):
         data = request.GET.copy()
