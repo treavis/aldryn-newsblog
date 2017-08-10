@@ -32,7 +32,7 @@ from aldryn_newsblog.utils.utilities import get_valid_languages_from_request
 from cms.models.fields import PlaceholderField
 from cms.models.pluginmodel import CMSPlugin
 from cms.utils.i18n import get_current_language, get_redirect_on_fallback
-from djangocms_publisher.models_parler import (
+from djangocms_publisher.contrib.parler.models import (
     ParlerPublisherTranslatedFields,
     ParlerPublisherModelMixin,
 )

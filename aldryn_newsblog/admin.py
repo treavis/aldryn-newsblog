@@ -14,7 +14,7 @@ from aldryn_people.models import Person
 from aldryn_reversion.admin import VersionedPlaceholderAdminMixin
 from aldryn_translation_tools.admin import AllTranslationsMixin
 
-from djangocms_publisher.admin_parler import PublisherParlerAdminMixin
+from djangocms_publisher.contrib.parler.admin import PublisherParlerAdminMixin
 from . import models
 
 
@@ -140,6 +140,7 @@ class ArticleAdmin(
             'fields': (
                 'is_published',
                 'publisher_status',
+                'publisher_status_parler',
             ),
             'classes': ('filer-file-info',),  # FIXME: add styling in djangocms-publisher to hide the ":"
         }),
@@ -188,6 +189,7 @@ class ArticleAdmin(
     ]
     readonly_fields = (
         'publisher_status',
+        'publisher_status_parler',
         'publisher_is_published_version',
         'publisher_published_version',
         'publisher_deletion_requested',
@@ -197,10 +199,21 @@ class ArticleAdmin(
         'default_published': 'is_published',
     }
 
-    def get_queryset(self, request):
-        qs = super(ArticleAdmin, self).get_queryset(request)
-        qs = qs.publisher_draft_or_published_only_prefer_published()
-        return qs
+    def get_changelist(self, request, **kwargs):
+        # FIXME: create a helper in djangocms-publisher to make this easier
+        # We override get_queryset on the ChangeList here because we want to
+        # only show draft or published on the change list. But still allow
+        # looking at either on the change_view.
+        ChangeList = super(ArticleAdmin, self).get_changelist(request, **kwargs)
+
+        class DraftOrLiveOnlyChangeList(ChangeList):
+            def get_queryset(self, request):
+                return (
+                    super(DraftOrLiveOnlyChangeList, self)
+                    .get_queryset(request)
+                    .publisher_draft_or_published_only_prefer_published()
+                )
+        return DraftOrLiveOnlyChangeList
 
     def is_published(self, obj):
         return obj.publisher_is_published_version
