@@ -36,6 +36,7 @@ from djangocms_publisher.contrib.parler.models import (
     ParlerPublisherTranslatedFields,
     ParlerPublisherModelMixin,
 )
+from djangocms_publisher.utils.copying import copy_placeholder
 from djangocms_text_ckeditor.fields import HTMLField
 from filer.fields.image import FilerImageField
 from parler.models import TranslatableModel
@@ -93,15 +94,6 @@ class Article(
     )
 
     translations = ParlerPublisherTranslatedFields(
-        # publisher_is_published_version is used to maintain slug uniqueness
-        # for published versions. It is a NullBooleanField so it can be
-        # null for drafts and allow non-unique slugs.
-        # publisher_is_published_translation_version=models.NullBooleanField(
-        #     null=True,
-        #     blank=True,
-        #     default=None,
-        #     editable=False,
-        # ),
         title=models.CharField(_('title'), max_length=234),
         slug=models.SlugField(
             verbose_name=_('slug'),
@@ -128,16 +120,6 @@ class Article(
             verbose_name=_('meta description'), blank=True, default=''),
         meta_keywords=models.TextField(
             verbose_name=_('meta keywords'), blank=True, default=''),
-        # meta={
-        #     'unique_together': (
-        #         (
-        #             'language_code',
-        #             'slug',
-        #             'publisher_is_published_translation_version',
-        #         ),
-        #     )
-        # },
-
         search_data=models.TextField(blank=True, editable=False)
     )
 
@@ -182,11 +164,6 @@ class Article(
 
     def publisher_copy_relations(self, old_obj):
         new_obj = self
-        # copy_parler_translations(
-        #     new_obj=self,
-        #     old_obj=old_obj,
-        # )
-        # TODO: Is there a more efficient way to copy ManyToMany?
         new_obj.categories = old_obj.categories.all()
         new_obj.related = old_obj.related.all()
         new_obj.tags = old_obj.tags.all()
@@ -196,6 +173,20 @@ class Article(
             new_obj.content = None
             new_obj.save()
         return new_obj
+
+    def publisher_copy_relations_for_translation(self, old_obj):
+        # old_obj is the old master obj. At this point self (new_obj) and
+        # old_obj both have a translation object for the language_code in
+        # question
+        language_code = old_obj.language_code
+        old_placeholder = old_obj.content
+        new_placeholder = self.content
+        copy_placeholder(
+            old_placeholder=old_placeholder,
+            new_placeholder=new_placeholder,
+            language_code=language_code,
+        )
+        return self
 
     def publisher_rewrite_ignore_stuff(self, old_obj):
         return [
@@ -258,7 +249,7 @@ class Article(
         namespace = self.get_app_namespace()
 
         with override(language):
-            if self.publisher_is_draft_version:
+            if self.publisher.is_draft_version:
                 return reverse(
                     '{0}article-detail-draft'.format(namespace),
                     kwargs={'pk': self.pk},
@@ -272,7 +263,7 @@ class Article(
     def get_public_url(self, language=None):
         if not language:
             language = get_current_language()
-        published_version = self.publisher_get_published_version()
+        published_version = self.publisher.get_published_version()
         if published_version:
             return published_version.get_absolute_url(language=language)
         return ''
@@ -280,7 +271,7 @@ class Article(
     def get_draft_url(self, language=None):
         if not language:
             language = get_current_language()
-        draft_version = self.publisher_get_draft_version()
+        draft_version = self.publisher.get_draft_version()
         if draft_version:
             return draft_version.get_absolute_url(language=language)
 
@@ -295,7 +286,7 @@ class Article(
         )
 
     def get_publish_url(self, language=None):
-        draft_version = self.publisher_get_draft_version()
+        draft_version = self.publisher.get_draft_version()
         if draft_version:
             namespace = self.get_app_namespace()
             return reverse(
@@ -305,7 +296,7 @@ class Article(
         return ''
 
     def get_discard_draft_url(self, language=None):
-        draft_version = self.publisher_get_draft_version()
+        draft_version = self.publisher.get_draft_version()
         if draft_version:
             namespace = self.get_app_namespace()
             return reverse(
@@ -361,7 +352,7 @@ class Article(
             title = self.safe_translation_getter('title', any_language=True)
         except AttributeError:
             title = 'Article {}'.format(self.id)
-        return self.publisher_add_status_label(title)
+        return self.publisher.add_status_label(title)
 
 
 class PluginEditModeMixin(object):
