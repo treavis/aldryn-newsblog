@@ -398,7 +398,7 @@ class NewsBlogAuthorsPlugin(PluginEditModeMixin, NewsBlogCMSPlugin):
         # For other users, limit subquery to published articles
         if not self.get_edit_mode(request):
             subquery += """ AND
-                aldryn_newsblog_article.is_published %s AND
+                aldryn_newsblog_article.publisher_is_published_version %s AND
                 aldryn_newsblog_article.publishing_date <= %s
             """ % (SQL_IS_TRUE, SQL_NOW_FUNC, )
 
@@ -443,7 +443,7 @@ class NewsBlogCategoriesPlugin(PluginEditModeMixin, NewsBlogCMSPlugin):
 
         if not self.get_edit_mode(request):
             subquery += """ AND
-                aldryn_newsblog_article.is_published %s AND
+                aldryn_newsblog_article.publisher_is_published_version %s AND
                 aldryn_newsblog_article.publishing_date <= %s
             """ % (SQL_IS_TRUE, SQL_NOW_FUNC, )
 
@@ -590,7 +590,7 @@ class NewsBlogTagsPlugin(PluginEditModeMixin, NewsBlogCMSPlugin):
 
         if not self.get_edit_mode(request):
             subquery += """ AND
-                aldryn_newsblog_article.is_published %s AND
+                aldryn_newsblog_article.publisher_is_published_version %s AND
                 aldryn_newsblog_article.publishing_date <= %s
             """ % (SQL_IS_TRUE, SQL_NOW_FUNC, )
 
