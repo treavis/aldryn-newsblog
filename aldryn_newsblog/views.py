@@ -126,6 +126,9 @@ class ArticleDetail(AppConfigMixin, AppHookCheckMixin, PreviewModeMixin,
             return HttpResponsePermanentRedirect(url)
         else:
             raise Http404('This is not the canonical uri of this object.')
+            
+    def post(self, request, *args, **kwargs):
+        return self.get(request, *args, **kwargs)
 
     def get_object(self, queryset=None):
         """
