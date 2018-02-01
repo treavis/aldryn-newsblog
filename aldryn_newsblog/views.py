@@ -235,6 +235,9 @@ class ArticleListBase(AppConfigMixin, AppHookCheckMixin, TemplatePrefixMixin,
 class ArticleList(ArticleListBase):
     """A complete list of articles."""
     show_header = True
+    
+    def post(self, request, *args, **kwargs):
+        return self.get(request, *args, **kwargs)
 
     def get_queryset(self):
         qs = super(ArticleList, self).get_queryset()
